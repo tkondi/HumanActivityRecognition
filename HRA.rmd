@@ -1,0 +1,92 @@
+---
+title: "Human Activity Recognition"
+author: "Tedi Kondi"
+date: "07 October 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Background of Data
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. 
+
+## Background of Analysis Requirements 
+The goal of your project is to predict the manner in which they did the exercise. This is the "classe" variable in the training set. You may use any of the other variables to predict with. You should create a report describing how you built your model, how you used cross validation, what you think the expected out of sample error is, and why you made the choices you did. You will also use your prediction model to predict 20 different test cases.
+
+
+## Loading library and data 
+
+```{r dataloading}
+library(caret)
+library(randomForest)
+library(rpart)
+library(rattle)
+
+url_train <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+url_test <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+
+
+train <- read.csv(url(url_train), na.strings=c("NA","#DIV/0!",""))
+test <- read.csv(url(url_test), na.strings=c("NA","#DIV/0!",""))
+
+dim(train)
+
+```
+##Cleaning data and analizing dimension:
+```{r dimension}
+# removing near zero varians columns
+myDataNZV <- nearZeroVar(train)
+train<-train[,-myDataNZV]
+#removing same columns from test dataset 
+test<-test[,-myDataNZV]
+#removing  first id variable, username and timestamp that don't have to do with accelerometers to not interfer with the algorithm.
+train<-train[,c(-1,-2,-5)]
+test<-test[,c(-1,-2,-5)]
+
+#removing columns where more then 80% of value is NA in the trian set removing the first from test set and then actualizing training set. 
+test<-test[, -which(colMeans(is.na(train)) > 0.8)]
+train<-train[, -which(colMeans(is.na(train)) > 0.8)]
+
+#checking train dimension
+dim(train)
+```
+
+##Choosing algorithm to use and cross validation
+From 160 original feature there are 56 resulting meanfull that will be used to predict classe. 56 is still a big amount and random forest and decision tree algorithms will be used as are good in choosing the features. 
+The algorithm to use on the test set will be chosen in base of the best between the to with better accuracy and lower out of sample err. (1-accuracy) in the validation test set. 
+As the dimension of training set is 19622 rows, there are enogth rows to make cross validation and create a validation set on the traing set. The traing set will be splitted in 75 traing and 25 validation.
+
+```{r modeling}
+# setting seed for reproducibility of the results
+set.seed(3884)
+train_set <- createDataPartition(y=train$classe, p=0.75, list=FALSE)
+training <- train[train_set, ] 
+testing <- train[-train_set, ]
+
+#using decision tree
+mod_DT <- rpart(classe ~ ., data=training, method="class")
+#decision tree
+fancyRpartPlot(mod_DT)
+pred_DT <- predict(mod_DT, testing, type = "class")
+confusionMatrix(pred_DT, testing$classe)$overall['Accuracy']
+# 0.84 accuracy for Decision Tree
+
+#using Random Forest
+mod_RF <- randomForest(classe ~. , data=training)
+pred_RF <- predict(mod_RF, testing, type="class")
+confusionMatrix(pred_RF, testing$classe)$overall['Accuracy']
+# 0.9984 accuracy for random forest  
+
+```
+
+## Chosing Model and applying to test set for the 20 cases.
+The model chosed is Random forest which has a very good accuracy: 0.9984
+```{r tesing}
+# removing id in the last column where in train we have the classe variable
+test<-test[,-58] 
+
+predFinal <- predict(mod_RF, test, type="class")
+predFinal
+```
