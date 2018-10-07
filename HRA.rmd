@@ -78,11 +78,13 @@ mod_RF <- randomForest(classe ~. , data=training)
 pred_RF <- predict(mod_RF, testing, type="class")
 confusionMatrix(pred_RF, testing$classe)$overall['Accuracy']
 # 0.9984 accuracy for random forest  
+# out of sample error= 1-confusionMatrix(pred_RF, testing$classe)$overall['Accuracy']
+1-confusionMatrix(pred_RF, testing$classe)$overall['Accuracy']
 
 ```
 
 ## Chosing Model and applying to test set for the 20 cases.
-The model chosed is Random forest which has a very good accuracy: 0.9984
+The model chosed on cross validation is Random forest which has a very good accuracy: 0.9984 and out of sample error 0.001631321 
 ```{r tesing}
 # removing id in the last column where in train we have the classe variable
 test<-test[,-58] 
